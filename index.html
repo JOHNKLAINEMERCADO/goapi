@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Secure Balance Gateway</title>
+    <style>
+        body { font-family: system-ui, sans-serif; background-color: #f8fafc; margin: 0; padding: 40px; display: flex; justify-content: center; }
+        .card { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); width: 100%; max-width: 400px; }
+        h2 { margin-top: 0; color: #0f172a; font-size: 22px; }
+        label { display: block; margin-bottom: 6px; font-weight: 600; color: #475569; font-size: 14px; }
+        input { width: 100%; padding: 10px; margin-bottom: 20px; border: 1px solid #cbd5e1; border-radius: 6px; box-sizing: border-box; font-size: 15px; }
+        button { background-color: #2563eb; color: white; border: none; padding: 12px; width: 100%; font-size: 16px; font-weight: 500; border-radius: 6px; cursor: pointer; }
+        button:hover { background-color: #1d4ed8; }
+        #responseLog { margin-top: 20px; padding: 15px; border-radius: 6px; display: none; font-family: monospace; font-size: 14px; white-space: pre-wrap; }
+        .success { background-color: #f0fdf4; color: #166534; border: 1px solid #bbf7d0; }
+        .error { background-color: #fef2f2; color: #991b1b; border: 1px solid #fca5a5; }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <h2>Secure Balance Portal</h2>
+    
+    <label for="usernameField">Username</label>
+    <input type="text" id="usernameField" placeholder="e.g., alice">
+
+    <label for="tokenField">Auth Token</label>
+    <input type="password" id="tokenField" placeholder="Enter authtoken...">
+    
+    <button onclick="queryBalanceAPI()">Submit Request</button>
+    
+    <div id="responseLog"></div>
+</div>
+
+<script>
+async function queryBalanceAPI() {
+    const username = document.getElementById('usernameField').value.trim();
+    const authtoken = document.getElementById('tokenField').value.trim();
+    const logDiv = document.getElementById('responseLog');
+    
+    logDiv.style.display = 'block';
+    logDiv.className = '';
+    logDiv.innerText = 'Verifying credentials...';
+
+    if (!username || !authtoken) {
+        logDiv.className = 'error';
+        logDiv.innerText = 'Error: Both Username and Auth Token fields are required.';
+        return;
+    }
+
+    try {
+        // 1. Matches the path /account/coins mapped inside your handlers package
+        const url = `http://localhost:8000/account/coins?username=${encodeURIComponent(username)}`;
+
+        const response = await fetch(url, {
+            method: 'GET', // 2. Matches router.Get
+            headers: {
+                // Passes the raw token string directly to your Authorization middleware
+                'Authorization': authtoken,
+                'Content-Type': 'application/json'
+            }
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            logDiv.className = 'error';
+            logDiv.innerText = `Server Error [Code ${data.code || response.status}]:\n${data.message || 'Invalid username or token.'}`;
+        } else {
+            logDiv.className = 'success';
+            logDiv.innerText = `Success!\nAccount Balance: ${data.Balance} Coins`;
+        }
+    } catch (err) {
+        logDiv.className = 'error';
+        logDiv.innerText = 'Connection Error: Unable to communicate with the running Go executable.';
+    }
+}
+</script>
+
+</body>
+</html>
